@@ -9,19 +9,19 @@ type BitSet struct {
 	bitset uint64
 }
 
-func (b* BitSet) isSet(bit int) bool {
+func (b *BitSet) isSet(bit int) bool {
 	return (b.bitset & (1 << uint(bit))) != 0
 }
 
-func (b* BitSet) set(bit int) {
+func (b *BitSet) set(bit int) {
 	b.bitset |= (1 << uint(bit))
 }
 
-func (b* BitSet) reset(bit int) {
+func (b *BitSet) reset(bit int) {
 	b.bitset &^= (1 << uint(bit))
 }
 
-func (b* BitSet) count(len int) int {
+func (b *BitSet) count(len int) int {
 	number := 0
 	for bit := 0; bit <= len; bit++ {
 		if b.isSet(bit) {
@@ -33,9 +33,9 @@ func (b* BitSet) count(len int) int {
 
 // Grid describes the sudoku grid
 type Grid struct {
-	grid                [][]int
-	gridSize            int
-	subGridSize         int
+	grid            [][]int
+	gridSize        int
+	subGridSize     int
 	valuesInRows    []BitSet
 	valuesInCols    []BitSet
 	valuesInSubGrid []BitSet
@@ -50,7 +50,7 @@ func getSubGridOffset(subGrid, subGridSize int) (rowOffset, colOffset int) {
 	return
 }
 
-func (g* Grid) copy(gnew [][]int) {
+func (g *Grid) copy(gnew [][]int) {
 	for row := range g.grid {
 		for col := range g.grid[row] {
 			g.grid[row][col] = gnew[row][col]
@@ -58,7 +58,7 @@ func (g* Grid) copy(gnew [][]int) {
 	}
 }
 
-func (g* Grid) cache() {
+func (g *Grid) cache() {
 	g.valuesInRows = make([]BitSet, g.gridSize)
 	g.valuesInCols = make([]BitSet, g.gridSize)
 	g.valuesInSubGrid = make([]BitSet, g.gridSize)
@@ -67,7 +67,7 @@ func (g* Grid) cache() {
 			if val != 0 {
 				g.valuesInRows[row].set(val)
 				g.valuesInCols[col].set(val)
-				g.valuesInSubGrid[getSubGrid(row,col,g.subGridSize)].set(val)
+				g.valuesInSubGrid[getSubGrid(row, col, g.subGridSize)].set(val)
 			}
 		}
 	}
@@ -75,11 +75,11 @@ func (g* Grid) cache() {
 	//	"valuesInSubGrid=", g.valuesInSubGrid)
 }
 
-func (g* Grid) setValue(row, col, val int) {
+func (g *Grid) setValue(row, col, val int) {
 	g.grid[row][col] = val
 	g.valuesInRows[row].set(val)
 	g.valuesInCols[col].set(val)
-	g.valuesInSubGrid[getSubGrid(row,col,g.subGridSize)].set(val)
+	g.valuesInSubGrid[getSubGrid(row, col, g.subGridSize)].set(val)
 }
 
 // MakeGrid creates a sudoku grid
@@ -92,7 +92,7 @@ func MakeGrid(grid [][]int, gridSize int, subGridSize int) Grid {
 		}
 	}
 
-	g := Grid{grid : newGrid, gridSize : gridSize, subGridSize : subGridSize}
+	g := Grid{grid: newGrid, gridSize: gridSize, subGridSize: subGridSize}
 	g.cache()
 	return g
 }
@@ -175,7 +175,7 @@ func (g *Grid) consistentInCols() bool {
 // check whether consistent in all subgrids
 func (g *Grid) consistentInSubGrids() bool {
 	for subGrid := 0; subGrid < g.gridSize; subGrid++ {
-		subGridRow, subGridCol := getSubGridOffset(subGrid,g.subGridSize)
+		subGridRow, subGridCol := getSubGridOffset(subGrid, g.subGridSize)
 		bitset := BitSet{0}
 		for row := subGridRow; row < subGridRow+g.subGridSize; row++ {
 			for col := subGridCol; col < subGridCol+g.subGridSize; col++ {
@@ -232,7 +232,7 @@ func bestCount(bitSetArray []BitSet, gridSize int) (bestIndex, bestCount int) {
 func (g *Grid) recurse(row, col int) bool {
 	for val := 1; val <= g.gridSize; val++ {
 		gnew := MakeGrid(g.grid, g.gridSize, g.subGridSize)
-		gnew.setValue(row,col,val)
+		gnew.setValue(row, col, val)
 		if gnew.consistent() {
 			// fmt.Println("recurse(). row=", row, " col=", col, " val=", val, " grid=", gnew.grid, " valuesInRows=", gnew.valuesInRows)
 			solved := gnew.bestVal()
@@ -255,7 +255,7 @@ func (g *Grid) bestValRow(row int) bool {
 			}
 		}
 	}
-	
+
 	// fmt.Println("bestValRow(). row=", row, " bestCol=", bestCol, " valuesSetCols=", valuesSetCols, "grid=", g.grid)
 	if bestCol == -1 {
 		return true
@@ -273,7 +273,7 @@ func (g *Grid) bestValCol(col int) bool {
 			}
 		}
 	}
-	
+
 	// fmt.Println("bestValCol(). col=", col, " bestRow=", bestRow, " valuesSetRows=", valuesSetRows, " grid=", g.grid)
 	if bestRow == -1 {
 		return true
@@ -314,7 +314,7 @@ func (g *Grid) bestVal() bool {
 	// fmt.Println("bestVal(): grid=", g.grid, "bestRow=", bestRow, "bestCol=", bestCol, "bestSubGrid=", bestSubGrid,
 	//	"valuesSetRows=", valuesSetRows, "valuesSetCols=", valuesSetCols,
 	//	"valuesSetSubGrid=", valuesSetSubGrid)
-	
+
 	if valuesSetRows >= valuesSetCols {
 		if valuesSetRows >= valuesSetSubGrid {
 			return g.bestValRow(bestRow)
