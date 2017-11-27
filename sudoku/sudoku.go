@@ -9,6 +9,10 @@ type BitSet struct {
 	bitset uint64
 }
 
+func (b *BitSet) clear() {
+	b.bitset = 0
+}
+
 func (b *BitSet) isSet(bit int) bool {
 	return (b.bitset & (1 << uint(bit))) != 0
 }
@@ -51,50 +55,55 @@ func getSubGridOffset(subGrid, subGridSize int) (rowOffset, colOffset int) {
 }
 
 func (g *Grid) copy(gnew [][]int) {
-	for row := range g.grid {
-		for col := range g.grid[row] {
-			g.grid[row][col] = gnew[row][col]
+	for _, bitset := range g.valuesInRows {
+		bitset.clear()
+	}
+	for _, bitset := range g.valuesInCols {
+		bitset.clear()
+	}
+	for _, bitset := range g.valuesInSubGrid {
+		bitset.clear()
+	}
+	for row := range gnew {
+		for col, val := range gnew[row] {
+			g.setValue(row,col,val)
 		}
 	}
-}
-
-func (g *Grid) cache() {
-	g.valuesInRows = make([]BitSet, g.gridSize)
-	g.valuesInCols = make([]BitSet, g.gridSize)
-	g.valuesInSubGrid = make([]BitSet, g.gridSize)
-	for row := range g.grid {
-		for col, val := range g.grid[row] {
-			if val != 0 {
-				g.valuesInRows[row].set(val)
-				g.valuesInCols[col].set(val)
-				g.valuesInSubGrid[getSubGrid(row, col, g.subGridSize)].set(val)
-			}
-		}
-	}
-	// fmt.Println("cache(): grid=", g.grid, "valuesInRows=", g.valuesInRows, "valuesInCols=", g.valuesInCols,
-	//	"valuesInSubGrid=", g.valuesInSubGrid)
 }
 
 func (g *Grid) setValue(row, col, val int) {
 	g.grid[row][col] = val
-	g.valuesInRows[row].set(val)
-	g.valuesInCols[col].set(val)
-	g.valuesInSubGrid[getSubGrid(row, col, g.subGridSize)].set(val)
+	if val != 0 {
+		g.valuesInRows[row].set(val)
+		g.valuesInCols[col].set(val)
+		g.valuesInSubGrid[getSubGrid(row, col, g.subGridSize)].set(val)
+	}
 }
 
 // MakeGrid creates a sudoku grid
 func MakeGrid(grid [][]int, gridSize int, subGridSize int) Grid {
 	newGrid := make([][]int, gridSize)
+	pixels := make([]int, gridSize*gridSize)
 	for row := range newGrid {
-		newGrid[row] = make([]int, gridSize)
+		newGrid[row], pixels = pixels[:gridSize], pixels[gridSize:]
+	}
+	bitsets := make([]BitSet, 3*gridSize)
+	valuesInRows := bitsets[:gridSize] 
+	valuesInCols := bitsets[gridSize:2*gridSize]
+	valuesInSubGrid := bitsets[2*gridSize:3*gridSize]
+
+	for row := range grid {
 		for col, val := range grid[row] {
 			newGrid[row][col] = val
+			if val != 0 {
+				valuesInRows[row].set(val)
+				valuesInCols[col].set(val)
+				valuesInSubGrid[getSubGrid(row, col, subGridSize)].set(val)
+			}
 		}
 	}
-
-	g := Grid{grid: newGrid, gridSize: gridSize, subGridSize: subGridSize}
-	g.cache()
-	return g
+	
+	return Grid{newGrid, gridSize, subGridSize, valuesInRows, valuesInCols, valuesInSubGrid}
 }
 
 func (g Grid) splitLine() string {
@@ -203,12 +212,11 @@ func (g *Grid) bruteForce() bool {
 			if val == 0 {
 				for i := 1; i <= g.gridSize; i++ {
 					gnew := MakeGrid(g.grid, g.gridSize, g.subGridSize)
-					gnew.grid[row][col] = i
+					gnew.setValue(row,col,i)
 					if gnew.consistent() {
 						solved := gnew.bruteForce()
 						if solved {
 							g.copy(gnew.grid)
-							g.cache()
 							return true
 						}
 					}
@@ -238,7 +246,6 @@ func (g *Grid) recurse(row, col int) bool {
 			solved := gnew.bestVal()
 			if solved {
 				g.copy(gnew.grid)
-				g.cache()
 				return true
 			}
 		}
