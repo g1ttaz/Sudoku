@@ -19,7 +19,7 @@ func main() {
 		{0,0,2, 0,6,3, 0,0,0},
 		{0,0,0, 0,0,0, 8,0,6},		
 	}
-	g := sudoku.MakeGrid(grid,9,3)
+	g := sudoku.NewGrid(grid,9,3)
 	fmt.Printf("Original:\n%v\n", g)
 
 	g.Solve()

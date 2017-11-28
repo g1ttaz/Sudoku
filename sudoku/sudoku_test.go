@@ -74,7 +74,7 @@ func TestSudokuGrid(t *testing.T) {
 			},
 		},
 	} {
-		g := MakeGrid(c.in,9,3)
+		g := NewGrid(c.in,9,3)
 		g.Solve()
 		solved := g.grid
 		if !testEqual(solved,c.want) {

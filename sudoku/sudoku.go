@@ -1,7 +1,8 @@
 package sudoku
 
 import (
-	"strconv"
+	"bytes"
+	"fmt"
 )
 
 // BitSet is a set of integers
@@ -43,6 +44,7 @@ type Grid struct {
 	valuesInRows    []BitSet
 	valuesInCols    []BitSet
 	valuesInSubGrid []BitSet
+	consistent      bool
 }
 
 func getSubGrid(row, col, subGridSize int) int {
@@ -74,14 +76,26 @@ func (g *Grid) copy(gnew [][]int) {
 func (g *Grid) setValue(row, col, val int) {
 	g.grid[row][col] = val
 	if val != 0 {
+		if g.valuesInRows[row].isSet(val) {
+			g.consistent = false;
+		}
 		g.valuesInRows[row].set(val)
+
+		if g.valuesInCols[col].isSet(val) {
+			g.consistent = false;
+		}
 		g.valuesInCols[col].set(val)
-		g.valuesInSubGrid[getSubGrid(row, col, g.subGridSize)].set(val)
+
+		subgrid := getSubGrid(row, col, g.subGridSize)
+		if g.valuesInSubGrid[subgrid].isSet(val) {
+			g.consistent = false;
+		}
+		g.valuesInSubGrid[subgrid].set(val)
 	}
 }
 
-// MakeGrid creates a sudoku grid
-func MakeGrid(grid [][]int, gridSize int, subGridSize int) Grid {
+// NewGrid creates a sudoku grid
+func NewGrid(grid [][]int, gridSize int, subGridSize int) *Grid {
 	newGrid := make([][]int, gridSize)
 	pixels := make([]int, gridSize*gridSize)
 	for row := range newGrid {
@@ -92,49 +106,64 @@ func MakeGrid(grid [][]int, gridSize int, subGridSize int) Grid {
 	valuesInCols := bitsets[gridSize:2*gridSize]
 	valuesInSubGrid := bitsets[2*gridSize:3*gridSize]
 
+	consistent := true
 	for row := range grid {
 		for col, val := range grid[row] {
 			newGrid[row][col] = val
 			if val != 0 {
+				if valuesInRows[row].isSet(val) {
+					consistent = false;
+				}
 				valuesInRows[row].set(val)
+				
+				if valuesInCols[col].isSet(val) {
+					consistent = false;
+				}
 				valuesInCols[col].set(val)
-				valuesInSubGrid[getSubGrid(row, col, subGridSize)].set(val)
+				
+				subgrid := getSubGrid(row, col, subGridSize)
+				if valuesInSubGrid[subgrid].isSet(val) {
+					consistent = false;
+				}
+				valuesInSubGrid[subgrid].set(val)
 			}
 		}
 	}
 	
-	return Grid{newGrid, gridSize, subGridSize, valuesInRows, valuesInCols, valuesInSubGrid}
+	return &Grid{newGrid, gridSize, subGridSize, valuesInRows, valuesInCols, valuesInSubGrid, consistent}
 }
 
-func (g Grid) splitLine() string {
-	stringified := "+"
+// String returns a stringified representation of the sudoku grid
+func (g Grid) String() string {
+	// construct split line
+	var b bytes.Buffer
+	b.WriteString("+")
 	for col := 0; col < g.gridSize; col++ {
-		stringified = stringified + "--"
+		b.WriteString("--")
 		if col%g.subGridSize == g.subGridSize-1 {
-			stringified = stringified + "-+"
+			b.WriteString("-+")
 		}
 	}
-	return stringified
-}
+	b.WriteString("\n")
+	splitline := b.String()
 
-func (g Grid) String() string {
-	stringified := g.splitLine()
-	stringified = stringified + "\n"
+	// construct grid
+	var b2 bytes.Buffer
+	b2.WriteString(splitline)
 	for row := range g.grid {
-		stringified = stringified + "|"
+		b2.WriteString("|")
 		for col, val := range g.grid[row] {
-			stringified = stringified + " " + strconv.Itoa(val)
+			fmt.Fprintf(&b2, " %d", val)
 			if col%g.subGridSize == g.subGridSize-1 {
-				stringified = stringified + " |"
+				b2.WriteString(" |")
 			}
 		}
-		stringified = stringified + "\n"
+		b2.WriteString("\n")
 		if row%g.subGridSize == g.subGridSize-1 {
-			stringified = stringified + g.splitLine()
-			stringified = stringified + "\n"
+			b2.WriteString(splitline)
 		}
 	}
-	return stringified
+	return b2.String()
 }
 
 func (g *Grid) solved() bool {
@@ -148,72 +177,14 @@ func (g *Grid) solved() bool {
 	return true
 }
 
-// check whether consistent in all rows
-func (g *Grid) consistentInRows() bool {
-	for row := range g.grid {
-		bitset := BitSet{0}
-		for _, val := range g.grid[row] {
-			if val != 0 {
-				if bitset.isSet(val) {
-					return false
-				}
-				bitset.set(val)
-			}
-		}
-	}
-	return true
-}
-
-// check whether consistent in all columns
-func (g *Grid) consistentInCols() bool {
-	for col := 0; col < g.gridSize; col++ {
-		bitset := BitSet{0}
-		for row := range g.grid {
-			val := g.grid[row][col]
-			if val != 0 {
-				if bitset.isSet(val) {
-					return false
-				}
-				bitset.set(val)
-			}
-		}
-	}
-	return true
-}
-
-// check whether consistent in all subgrids
-func (g *Grid) consistentInSubGrids() bool {
-	for subGrid := 0; subGrid < g.gridSize; subGrid++ {
-		subGridRow, subGridCol := getSubGridOffset(subGrid, g.subGridSize)
-		bitset := BitSet{0}
-		for row := subGridRow; row < subGridRow+g.subGridSize; row++ {
-			for col := subGridCol; col < subGridCol+g.subGridSize; col++ {
-				val := g.grid[row][col]
-				if val != 0 {
-					if bitset.isSet(val) {
-						return false
-					}
-					bitset.set(val)
-				}
-			}
-		}
-	}
-	return true
-}
-
-// checks whether grid is consistent
-func (g *Grid) consistent() bool {
-	return g.consistentInRows() && g.consistentInCols() && g.consistentInSubGrids()
-}
-
 func (g *Grid) bruteForce() bool {
 	for row := range g.grid {
 		for col, val := range g.grid[row] {
 			if val == 0 {
 				for i := 1; i <= g.gridSize; i++ {
-					gnew := MakeGrid(g.grid, g.gridSize, g.subGridSize)
+					gnew := NewGrid(g.grid, g.gridSize, g.subGridSize)
 					gnew.setValue(row,col,i)
-					if gnew.consistent() {
+					if gnew.consistent {
 						solved := gnew.bruteForce()
 						if solved {
 							g.copy(gnew.grid)
@@ -239,10 +210,16 @@ func bestCount(bitSetArray []BitSet, gridSize int) (bestIndex, bestCount int) {
 
 func (g *Grid) recurse(row, col int) bool {
 	for val := 1; val <= g.gridSize; val++ {
-		gnew := MakeGrid(g.grid, g.gridSize, g.subGridSize)
+		if g.valuesInRows[row].isSet(val) || g.valuesInCols[col].isSet(val) {
+			continue;
+		}
+		if g.valuesInSubGrid[getSubGrid(row, col, g.subGridSize)].isSet(val) {
+			continue;
+		}
+		gnew := NewGrid(g.grid, g.gridSize, g.subGridSize)
 		gnew.setValue(row, col, val)
-		if gnew.consistent() {
-			// fmt.Println("recurse(). row=", row, " col=", col, " val=", val, " grid=", gnew.grid, " valuesInRows=", gnew.valuesInRows)
+		if gnew.consistent {
+			// fmt.Println("recurse(). row=", row, " col=", col, " val=", val, " grid=", gnew.grid)
 			solved := gnew.bestVal()
 			if solved {
 				g.copy(gnew.grid)
@@ -336,7 +313,7 @@ func (g *Grid) bestVal() bool {
 
 // Solve solves a sudoku grid
 func (g *Grid) Solve() bool {
-	if !g.consistent() {
+	if !g.consistent {
 		return false
 	}
 	return g.bestVal()
