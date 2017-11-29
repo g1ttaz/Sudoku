@@ -11,11 +11,18 @@ Creating a Sudoku grid:
 	g := sudoku.NewGrid(grid,9,3)
 ```
 
-Solving the grid:
+Solving the grid via brute force algorithm:
 ```
 	// returns false, if the input grid is not solveable
 	// true, otherwise
-	solved := g.Solve()
+	solved := g.SolveBruteForce()
+```
+
+Solving the grid via best value algorithm:
+```
+	// returns false, if the input grid is not solveable
+	// true, otherwise
+	solved := g.SolveBestVal()
 ```
 
 Obtain the result:

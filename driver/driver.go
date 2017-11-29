@@ -19,9 +19,13 @@ func main() {
 		{0,0,2, 0,6,3, 0,0,0},
 		{0,0,0, 0,0,0, 8,0,6},		
 	}
-	g := sudoku.NewGrid(grid,9,3)
-	fmt.Printf("Original:\n%v\n", g)
+	g1 := sudoku.NewGrid(grid,9,3)
+	g2 := sudoku.NewGrid(grid,9,3)
+	fmt.Printf("Original:\n%v\n", g1)
 
-	g.Solve()
-	fmt.Printf("Solved:\n%v\n", g)
+	g1.SolveBruteForce()
+	fmt.Printf("Solved via brute force:\n%v\n", g1)
+
+	g2.SolveBestVal()
+	fmt.Printf("Solved via best value:\n%v\n", g2)
 }

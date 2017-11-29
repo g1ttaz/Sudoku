@@ -133,6 +133,11 @@ func NewGrid(grid [][]int, gridSize int, subGridSize int) *Grid {
 	return &Grid{newGrid, gridSize, subGridSize, valuesInRows, valuesInCols, valuesInSubGrid, consistent}
 }
 
+// Grid returns the sudoku grid
+func (g *Grid) Grid() [][]int {
+	return g.grid
+}
+
 // String returns a stringified representation of the sudoku grid
 func (g Grid) String() string {
 	// construct split line
@@ -177,38 +182,9 @@ func (g *Grid) solved() bool {
 	return true
 }
 
-func (g *Grid) bruteForce() bool {
-	for row := range g.grid {
-		for col, val := range g.grid[row] {
-			if val == 0 {
-				for i := 1; i <= g.gridSize; i++ {
-					gnew := NewGrid(g.grid, g.gridSize, g.subGridSize)
-					gnew.setValue(row,col,i)
-					if gnew.consistent {
-						solved := gnew.bruteForce()
-						if solved {
-							g.copy(gnew.grid)
-							return true
-						}
-					}
-				}
-				return false
-			}
-		}
-	}
-	return true
-}
+type NextValFunc func (g *Grid) bool
 
-func bestCount(bitSetArray []BitSet, gridSize int) (bestIndex, bestCount int) {
-	for idx, bitset := range bitSetArray {
-		if no := bitset.count(gridSize); no > bestCount && no < gridSize {
-			bestIndex, bestCount = idx, no
-		}
-	}
-	return
-}
-
-func (g *Grid) recurse(row, col int) bool {
+func (g *Grid) recurse(row, col int, nextValFunc NextValFunc) bool {
 	for val := 1; val <= g.gridSize; val++ {
 		if g.valuesInRows[row].isSet(val) || g.valuesInCols[col].isSet(val) {
 			continue;
@@ -220,7 +196,7 @@ func (g *Grid) recurse(row, col int) bool {
 		gnew.setValue(row, col, val)
 		if gnew.consistent {
 			// fmt.Println("recurse(). row=", row, " col=", col, " val=", val, " grid=", gnew.grid)
-			solved := gnew.bestVal()
+			solved := nextValFunc(gnew)
 			if solved {
 				g.copy(gnew.grid)
 				return true
@@ -228,6 +204,26 @@ func (g *Grid) recurse(row, col int) bool {
 		}
 	}
 	return false
+}
+
+func (g *Grid) bruteForcePosition() (rowPos, colPos int) {
+	for row := range g.grid {
+		for col, val := range g.grid[row] {
+			if val == 0 {
+				rowPos, colPos = row, col
+				return
+			}
+		}
+	}
+	return -1, -1
+}
+
+func (g *Grid) bruteForceVal() bool {
+	row, col := g.bruteForcePosition()
+	if row == -1 || col == -1 {
+		return true
+	}
+	return g.recurse(row, col, (*Grid).bruteForceVal)
 }
 
 func (g *Grid) bestValRow(row int) bool {
@@ -244,7 +240,7 @@ func (g *Grid) bestValRow(row int) bool {
 	if bestCol == -1 {
 		return true
 	}
-	return g.recurse(row, bestCol)
+	return g.recurse(row, bestCol, (*Grid).bestVal)
 }
 
 func (g *Grid) bestValCol(col int) bool {
@@ -262,7 +258,7 @@ func (g *Grid) bestValCol(col int) bool {
 	if bestRow == -1 {
 		return true
 	}
-	return g.recurse(bestRow, col)
+	return g.recurse(bestRow, col, (*Grid).bestVal)
 }
 
 func (g *Grid) bestValSubGrid(subGrid int) bool {
@@ -287,7 +283,16 @@ func (g *Grid) bestValSubGrid(subGrid int) bool {
 	if bestRow == -1 || bestCol == -1 {
 		return true
 	}
-	return g.recurse(bestRow, bestCol)
+	return g.recurse(bestRow, bestCol, (*Grid).bestVal)
+}
+
+func bestCount(bitSetArray []BitSet, gridSize int) (bestIndex, bestCount int) {
+	for idx, bitset := range bitSetArray {
+		if no := bitset.count(gridSize); no > bestCount && no < gridSize {
+			bestIndex, bestCount = idx, no
+		}
+	}
+	return
 }
 
 func (g *Grid) bestVal() bool {
@@ -311,8 +316,16 @@ func (g *Grid) bestVal() bool {
 	return g.bestValSubGrid(bestSubGrid)
 }
 
-// Solve solves a sudoku grid
-func (g *Grid) Solve() bool {
+// SolveBruteForce solves a sudoku grid via brute force algorithm
+func (g *Grid) SolveBruteForce() bool {
+	if !g.consistent {
+		return false
+	}
+	return g.bruteForceVal()
+}
+
+// SolveBestVal solves a sudoku grid via best value algorithm
+func (g *Grid) SolveBestVal() bool {
 	if !g.consistent {
 		return false
 	}

@@ -74,11 +74,18 @@ func TestSudokuGrid(t *testing.T) {
 			},
 		},
 	} {
-		g := NewGrid(c.in,9,3)
-		g.Solve()
-		solved := g.grid
-		if !testEqual(solved,c.want) {
-			t.Errorf("Sudoku(%q) == %q, want %q", c.in, solved, c.want)
+		g1 := NewGrid(c.in,9,3)
+		g1.SolveBruteForce()
+		solved1 := g1.grid
+		if !testEqual(solved1,c.want) {
+			t.Errorf("Sudoku(%q) == %q, want %q", c.in, solved1, c.want)
+		}
+
+		g2 := NewGrid(c.in,9,3)
+		g2.SolveBestVal()
+		solved2 := g2.grid
+		if !testEqual(solved2,c.want) {
+			t.Errorf("Sudoku(%q) == %q, want %q", c.in, solved2, c.want)
 		}
 	}
 }
